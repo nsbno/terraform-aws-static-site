@@ -28,3 +28,8 @@ variable "site_name" {
   type        = string
 }
 
+variable "website_bucket" {
+  description = "(Optional) The name of an existing bucket to use - if not set the module will create a bucket"
+  type = string
+  default = ""
+}

@@ -13,7 +13,7 @@ data "aws_subnet_ids" "main" {
 module "static-example" {
   source           = "../../"
   name_prefix      = "static-example"
-  hosted_zone_name = "example.com"
-  site_name        = "www.example.com"
+  hosted_zone_name = "test.common-services.vydev.io"
+  site_name        = "exampletest.test.common-services.vydev.io"
 }
 
