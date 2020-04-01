@@ -43,7 +43,7 @@ data "aws_s3_bucket" "website_bucket" {
 }
 
 resource "aws_s3_bucket" "website_bucket" {
-  count = (var.website_bucket == "" ? 1 : 0)
+  count = (var.use_external_bucket == false ? 1 : 0)
   bucket = "${data.aws_caller_identity.current-account.account_id}-${var.name_prefix}-static-website-bucket"
   acl           = "private"
 
