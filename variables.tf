@@ -30,12 +30,12 @@ variable "site_name" {
 
 variable "use_external_bucket" {
   description = "Set this value to true if you wish to supply an existing bucket to use for this site"
-  type = bool
-  default = false
+  type        = bool
+  default     = false
 }
 
 variable "website_bucket" {
   description = "(Optional) The name of an existing bucket to use - if not set the module will create a bucket"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
