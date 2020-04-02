@@ -2,11 +2,11 @@
 # Output
 # ------------------------------------------------------------------------------
 output "website_bucket_id" {
-  value = aws_s3_bucket.website_bucket.id
+  value = data.aws_s3_bucket.website_bucket.id
 }
 
 output "website_bucket_arn" {
-  value = aws_s3_bucket.website_bucket.arn
+  value = data.aws_s3_bucket.website_bucket.arn
 }
 
 output "initial_bucket_policy" {

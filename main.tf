@@ -7,6 +7,8 @@ provider "aws" {
   version = "~> 2.23"
 }
 
+data "aws_caller_identity" "current-account" {}
+
 resource "aws_acm_certificate" "cert_website" {
   domain_name       = var.site_name
   validation_method = "DNS"
@@ -36,9 +38,14 @@ resource "aws_acm_certificate_validation" "main" {
   provider                = aws.virginia
 }
 
+data "aws_s3_bucket" "website_bucket" {
+  bucket = (var.website_bucket == "" ? aws_s3_bucket.website_bucket[0].id : var.website_bucket)
+}
+
 resource "aws_s3_bucket" "website_bucket" {
-  bucket_prefix = "${var.name_prefix}-static-website-bucket"
-  acl           = "private"
+  count  = (var.use_external_bucket == false ? 1 : 0)
+  bucket = "${data.aws_caller_identity.current-account.account_id}-${var.name_prefix}-static-website-bucket"
+  acl    = "private"
 
   website {
     index_document = "index.html"
@@ -51,7 +58,7 @@ resource "aws_s3_bucket" "website_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "website_bucket_policy" {
-  bucket = aws_s3_bucket.website_bucket.id
+  bucket = data.aws_s3_bucket.website_bucket.id
   policy = data.aws_iam_policy_document.s3_policy.json
 }
 
@@ -61,12 +68,11 @@ resource "aws_cloudfront_origin_access_identity" "origin_access_identity" {
 
 resource "aws_cloudfront_distribution" "s3_distribution" {
   depends_on = [
-    aws_s3_bucket.website_bucket,
     aws_acm_certificate_validation.main,
   ]
 
   origin {
-    domain_name = aws_s3_bucket.website_bucket.bucket_regional_domain_name
+    domain_name = data.aws_s3_bucket.website_bucket.bucket_regional_domain_name
     origin_id   = aws_cloudfront_origin_access_identity.origin_access_identity.id
 
     s3_origin_config {
@@ -146,7 +152,7 @@ resource "aws_route53_record" "wwww_a" {
 data "aws_iam_policy_document" "s3_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.website_bucket.arn}/*"]
+    resources = ["${data.aws_s3_bucket.website_bucket.arn}/*"]
 
     principals {
       type        = "AWS"
@@ -156,7 +162,7 @@ data "aws_iam_policy_document" "s3_policy" {
 
   statement {
     actions   = ["s3:ListBucket"]
-    resources = [aws_s3_bucket.website_bucket.arn]
+    resources = [data.aws_s3_bucket.website_bucket.arn]
 
     principals {
       type        = "AWS"
