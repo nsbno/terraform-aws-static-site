@@ -41,7 +41,7 @@ variable "website_bucket" {
 }
 
 variable "external_domain" {
-  description = "An external domain to access the site from"
+  description = "(Optional) An external domain to access the site from (e.g. `<app>.vy.no`)"
   default     = ""
   type        = string
 }
