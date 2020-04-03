@@ -39,3 +39,10 @@ variable "website_bucket" {
   type        = string
   default     = ""
 }
+
+variable "external_domain" {
+  description = "An external domain to access the site from"
+  default     = ""
+  type        = string
+}
+
