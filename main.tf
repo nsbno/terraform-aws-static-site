@@ -2,9 +2,8 @@
 # Resources
 # ------------------------------------------------------------------------------
 provider "aws" {
-  region  = "us-east-1"
-  alias   = "virginia"
-  version = "~> 2.23"
+  # Module expects aws.certificate_provider set to us-east-1 to be passed in via the "providers" argument
+  alias   = "certificate_provider"
 }
 
 data "aws_caller_identity" "current-account" {}
@@ -12,7 +11,7 @@ data "aws_caller_identity" "current-account" {}
 resource "aws_acm_certificate" "cert_website" {
   domain_name       = var.site_name
   validation_method = "DNS"
-  provider          = aws.virginia
+  provider          = aws.certificate_provider
   tags              = var.tags
 
   lifecycle {
@@ -35,7 +34,7 @@ resource "aws_route53_record" "cert_website_validation" {
 resource "aws_acm_certificate_validation" "main" {
   certificate_arn         = aws_acm_certificate.cert_website.arn
   validation_record_fqdns = [aws_route53_record.cert_website_validation.fqdn]
-  provider                = aws.virginia
+  provider                = aws.certificate_provider
 }
 
 data "aws_s3_bucket" "website_bucket" {
