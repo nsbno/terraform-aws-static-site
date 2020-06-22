@@ -43,6 +43,6 @@ variable "website_bucket" {
 variable "origin_path" {
   description = "(Optional) Make CloudFront request objects from a specific S3 path"
   type        = string
-  default     = "/"
+  default     = ""
 }
 
