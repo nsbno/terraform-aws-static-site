@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 provider "aws" {
   # Module expects aws.certificate_provider set to us-east-1 to be passed in via the "providers" argument
-  alias   = "certificate_provider"
+  alias = "certificate_provider"
 }
 
 data "aws_caller_identity" "current-account" {}
