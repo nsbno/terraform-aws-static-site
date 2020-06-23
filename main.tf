@@ -12,9 +12,9 @@ locals {
   domains = sort(keys(var.domain_zones))
   validation_options_by_domain_name = {
     for opt in aws_acm_certificate.cert_website.domain_validation_options : opt.domain_name => merge(opt, {
-      # NOTE: `try` catches the error that occurs when `domain_validation_options` references a domain
-      # that has been removed from `var.domain_zones`
-      zone_id = try(var.domain_zones[opt.domain_name], keys(var.domain_zones)[0])
+      # NOTE: When `domain_validation_options` references a domain that has been removed from `var.domain_zones`
+      # `lookup` defaults to using a value we know exists
+      zone_id = lookup(var.domain_zones, opt.domain_name, keys(var.domain_zones)[0])
     })
   }
 }
@@ -32,15 +32,13 @@ resource "aws_acm_certificate" "cert_website" {
 }
 
 resource "aws_route53_record" "cert_website_validation" {
-  # NOTE: The `try` methods make sure that `terraform apply` succeeds despite using out-of-date `domain_validation_options`
-  # This may lead to invalid validation records, in which case the `aws_acm_certificate_validation` will time out.
-  # Running `terraform apply` again should fix such a situation.
+  # NOTE: When `domain_validation_options` is not up-to-date, `lookup` will default to values we know exists
   depends_on      = [aws_acm_certificate.cert_website]
   for_each        = var.domain_zones
-  name            = try(local.validation_options_by_domain_name[each.key].resource_record_name, values(local.validation_options_by_domain_name)[0].resource_record_name)
-  type            = try(local.validation_options_by_domain_name[each.key].resource_record_type, values(local.validation_options_by_domain_name)[0].resource_record_type)
-  zone_id         = try(local.validation_options_by_domain_name[each.key].zone_id, values(local.validation_options_by_domain_name)[0].zone_id)
-  records         = [try(local.validation_options_by_domain_name[each.key].resource_record_value, values(local.validation_options_by_domain_name)[0].resource_record_value)]
+  name            = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_name
+  type            = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_type
+  zone_id         = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).zone_id
+  records         = [lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_value]
   ttl             = 60
   allow_overwrite = true
 }
