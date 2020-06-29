@@ -9,21 +9,21 @@ provider "aws" {
 data "aws_caller_identity" "current-account" {}
 
 locals {
-  domains = sort(keys(var.domain_zones))
+  all_domains = { for obj in concat([var.domain_name], var.subject_alternative_names) : obj.domain => obj }
   validation_options_by_domain_name = {
     for opt in aws_acm_certificate.cert_website.domain_validation_options : opt.domain_name => merge(opt, {
       # NOTE: When `domain_validation_options` references a domain that has been removed from `var.domain_zones`
       # `lookup` defaults to using a value we know exists
-      zone_id = lookup(var.domain_zones, opt.domain_name, keys(var.domain_zones)[0])
+      zone_id = lookup(local.all_domains, opt.domain_name, keys(local.all_domains)[0]).zone_id
     })
   }
 }
 
 resource "aws_acm_certificate" "cert_website" {
-  domain_name               = local.domains[0]
+  domain_name               = var.domain_name["domain"]
   validation_method         = "DNS"
   provider                  = aws.certificate_provider
-  subject_alternative_names = slice(local.domains, 1, length(local.domains))
+  subject_alternative_names = [for obj in var.subject_alternative_names : obj["domain"]]
   tags                      = var.tags
 
   lifecycle {
@@ -34,7 +34,7 @@ resource "aws_acm_certificate" "cert_website" {
 resource "aws_route53_record" "cert_website_validation" {
   # NOTE: When `domain_validation_options` is not up-to-date, `lookup` will default to values we know exists
   depends_on      = [aws_acm_certificate.cert_website]
-  for_each        = var.domain_zones
+  for_each        = local.all_domains
   name            = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_name
   type            = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_type
   zone_id         = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).zone_id
@@ -97,7 +97,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  aliases             = local.domains
+  aliases             = sort(keys(local.all_domains))
 
   custom_error_response {
     error_code         = 404
@@ -152,10 +152,10 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 }
 
 resource "aws_route53_record" "www_a" {
-  for_each = var.domain_zones
+  for_each = local.all_domains
   name     = "${each.key}."
   type     = "A"
-  zone_id  = each.value
+  zone_id  = each.value.zone_id
   alias {
     name                   = aws_cloudfront_distribution.s3_distribution.domain_name
     zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
