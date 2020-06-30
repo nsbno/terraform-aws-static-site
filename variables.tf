@@ -19,12 +19,12 @@ variable "tags" {
 }
 
 variable "domain_name" {
-  description = "A map containing a domain and its associated hosted zone ID. The domain will be associated with the CloudFront distribution and ACM certificate."
+  description = "A map containing a domain and name of the associated hosted zone. The domain will be associated with the CloudFront distribution and ACM certificate."
   type        = map(string)
 }
 
 variable "subject_alternative_names" {
-  description = "A list of maps containing domains and their associated hosted zone ID. The domains will be associated with the CloudFront distribution and ACM certificate."
+  description = "A list of maps containing domains and names of their associated hosted zones. The domains will be associated with the CloudFront distribution and ACM certificate."
   type        = list(map(string))
 }
 

@@ -9,14 +9,22 @@ provider "aws" {
 data "aws_caller_identity" "current-account" {}
 
 locals {
-  all_domains = { for obj in concat([var.domain_name], var.subject_alternative_names) : obj.name => obj }
-  validation_options_by_domain_name = {
-    for opt in aws_acm_certificate.cert_website.domain_validation_options : opt.domain_name => merge(opt, {
-      # NOTE: When `domain_validation_options` references a domain that has been removed from `var.domain_zones`
-      # `lookup` defaults to using a value we know exists
-      zone_id = lookup(local.all_domains, opt.domain_name, var.domain_name).zone_id
+  validation_options_by_domain_name = { for opt in aws_acm_certificate.cert_website.domain_validation_options : opt.domain_name => opt }
+  all_domains_static                = { for obj in concat([var.domain_name], var.subject_alternative_names) : obj.name => obj }
+  all_domains_dynamic = { for name, v in local.all_domains_static : name => merge(v, {
+    /*
+    // NOTE: `domain_validation_options` may reference stale data due to issues with the AWS provider,
+    // so we default to a known value if this is the case.
+    */
+    validation_options = lookup(local.validation_options_by_domain_name, name, values(local.validation_options_by_domain_name)[0])
+    zone_id            = data.aws_route53_zone.zone[name].id
     })
   }
+}
+
+data "aws_route53_zone" "zone" {
+  for_each = local.all_domains_static
+  name     = each.value.zone
 }
 
 resource "aws_acm_certificate" "cert_website" {
@@ -32,13 +40,12 @@ resource "aws_acm_certificate" "cert_website" {
 }
 
 resource "aws_route53_record" "cert_website_validation" {
-  # NOTE: When `domain_validation_options` is not up-to-date, `lookup` will default to values we know exists
   depends_on      = [aws_acm_certificate.cert_website]
-  for_each        = local.all_domains
-  name            = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_name
-  type            = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_type
-  zone_id         = lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).zone_id
-  records         = [lookup(local.validation_options_by_domain_name, each.key, values(local.validation_options_by_domain_name)[0]).resource_record_value]
+  for_each        = local.all_domains_static
+  name            = local.all_domains_dynamic[each.key].validation_options.resource_record_name
+  type            = local.all_domains_dynamic[each.key].validation_options.resource_record_type
+  records         = [local.all_domains_dynamic[each.key].validation_options.resource_record_value]
+  zone_id         = local.all_domains_dynamic[each.key].zone_id
   ttl             = 60
   allow_overwrite = true
 }
@@ -97,7 +104,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  aliases             = sort(keys(local.all_domains))
+  aliases             = sort(keys(local.all_domains_static))
 
   custom_error_response {
     error_code         = 404
@@ -152,10 +159,10 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 }
 
 resource "aws_route53_record" "www_a" {
-  for_each = local.all_domains
+  for_each = local.all_domains_static
   name     = "${each.key}."
   type     = "A"
-  zone_id  = each.value.zone_id
+  zone_id  = data.aws_route53_zone.zone[each.key].id
   alias {
     name                   = aws_cloudfront_distribution.s3_distribution.domain_name
     zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
