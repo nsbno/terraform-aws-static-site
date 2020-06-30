@@ -14,7 +14,7 @@ locals {
     for opt in aws_acm_certificate.cert_website.domain_validation_options : opt.domain_name => merge(opt, {
       # NOTE: When `domain_validation_options` references a domain that has been removed from `var.domain_zones`
       # `lookup` defaults to using a value we know exists
-      zone_id = lookup(local.all_domains, opt.domain_name, keys(local.all_domains)[0]).zone_id
+      zone_id = lookup(local.all_domains, opt.domain_name, var.domain_name).zone_id
     })
   }
 }
