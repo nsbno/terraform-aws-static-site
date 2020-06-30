@@ -9,7 +9,7 @@ provider "aws" {
 data "aws_caller_identity" "current-account" {}
 
 locals {
-  all_domains = { for obj in concat([var.domain_name], var.subject_alternative_names) : obj.domain => obj }
+  all_domains = { for obj in concat([var.domain_name], var.subject_alternative_names) : obj.name => obj }
   validation_options_by_domain_name = {
     for opt in aws_acm_certificate.cert_website.domain_validation_options : opt.domain_name => merge(opt, {
       # NOTE: When `domain_validation_options` references a domain that has been removed from `var.domain_zones`
@@ -20,10 +20,10 @@ locals {
 }
 
 resource "aws_acm_certificate" "cert_website" {
-  domain_name               = var.domain_name["domain"]
+  domain_name               = var.domain_name.name
   validation_method         = "DNS"
   provider                  = aws.certificate_provider
-  subject_alternative_names = [for obj in var.subject_alternative_names : obj["domain"]]
+  subject_alternative_names = [for obj in var.subject_alternative_names : obj.name]
   tags                      = var.tags
 
   lifecycle {
