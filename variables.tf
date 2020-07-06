@@ -6,11 +6,6 @@ variable "name_prefix" {
   type        = string
 }
 
-variable "hosted_zone_name" {
-  description = "The name of the hosted zone in which to register this site"
-  type        = string
-}
-
 variable "bucket_versioning" {
   description = "(Optional) Enable versioning. Once you version-enable a bucket, it can never return to an unversioned state. You can, however, suspend versioning on that bucket."
   type        = bool
@@ -23,9 +18,14 @@ variable "tags" {
   default     = {}
 }
 
-variable "site_name" {
-  description = "The name of the certificate and address for the site"
-  type        = string
+variable "domain_name" {
+  description = "A map containing a domain and name of the associated hosted zone. The domain will be associated with the CloudFront distribution and ACM certificate."
+  type        = map(string)
+}
+
+variable "subject_alternative_names" {
+  description = "A list of maps containing domains and names of their associated hosted zones. The domains will be associated with the CloudFront distribution and ACM certificate."
+  type        = list(map(string))
 }
 
 variable "use_external_bucket" {
@@ -38,4 +38,10 @@ variable "website_bucket" {
   description = "(Optional) The name of an existing bucket to use - if not set the module will create a bucket"
   type        = string
   default     = ""
+}
+
+variable "certificate_validation_timeout" {
+  description = "(Optional) How long to wait for the certificate to be issued."
+  type        = string
+  default     = "45m"
 }

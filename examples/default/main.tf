@@ -4,24 +4,21 @@ provider "aws" {
 
 provider "aws" {
   region = "us-east-1"
-  alias = "certificate_provider"
+  alias  = "certificate_provider"
 }
 
-data "aws_vpc" "main" {
-  default = true
-}
-
-data "aws_subnet_ids" "main" {
-  vpc_id = data.aws_vpc.main.id
+resource "aws_route53_zone" "main" {
+  name = "example.com"
 }
 
 module "static-example" {
-  source           = "../../"
+  source = "../../"
   providers = {
     aws.certificate_provider = aws.certificate_provider
   }
-  name_prefix      = "static-example"
-  hosted_zone_name = "example.com"
-  site_name        = "static-example.example.com"
+  name_prefix = "static-example"
+  domain_zones = {
+    "static-example.example.com" = aws_route53_zone.main.id
+  }
 }
 
